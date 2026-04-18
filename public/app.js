@@ -676,7 +676,6 @@ const app = (() => {
                                     (${h.schoolYear || 'N/A'})
                                 </div>
                             `).join('')}
-                            <div style="font-weight:600; color:var(--cj-blue); margin-top:2px;">Current Grade: ${sub.gwa.toFixed(2)}</div>
                         </div>` : '';
 
                     return `
@@ -692,14 +691,18 @@ const app = (() => {
                         </div>`;
                 };
 
+                const cardId = `lookup-card-${s.studentId.replace(/[^a-z0-9]/gi, '-')}`;
                 html += `
-                    <div class="student-card">
+                    <div class="student-card" id="${cardId}">
                         <div class="student-header">
                             <div>
                                 <h2>${s.name}</h2>
                                 <p class="student-id">ID: ${s.studentId} &nbsp;|&nbsp; Program: <span style="font-weight:700;color:var(--cj-gold-dark);">${s.classifier !== 'NONE' && s.classifier ? s.classifier : 'N/A'}</span> &nbsp;|&nbsp; Year ${s.yearLevel || '—'}</p>
                             </div>
-                            <button class="btn btn-sm" style="background:#f9f9f9;border:1px solid #ddd;color:#333;" onclick="document.querySelectorAll('details').forEach(d => d.open = true); window.print()">🖨️ Print</button>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-sm" style="background:#f9f9f9;border:1px solid #ddd;color:#333;" onclick="document.querySelectorAll('details').forEach(d => d.open = true); window.print()">🖨️ Print</button>
+                                <button class="btn btn-sm" style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;" onclick="app.downloadAsPDF('${cardId}', '${s.name}')">📄 Save to PDF</button>
+                            </div>
                         </div>
                         
                         <details style="margin: 1rem 0; padding: 0.75rem; background: #fafafa; border-radius: var(--radius-md); border: 1px solid #eaeaea;">
@@ -809,8 +812,9 @@ const app = (() => {
                 const { available, locked, completed } = s.eligibility || { available: [], locked: [], completed: [] };
                 const gwa = (s.finalGWA || 0).toFixed(2);
 
+                const cardId = `enroll-card-${s.studentId.replace(/[^a-z0-9]/gi, '-')}`;
                 html += `
-                <div class="student-card" style="margin-bottom: 1rem; padding: 1rem; border: 1px solid #eaeaea; border-radius: var(--radius-md); background: #fff;">
+                <div class="student-card" id="${cardId}" style="margin-bottom: 1rem; padding: 1rem; border: 1px solid #eaeaea; border-radius: var(--radius-md); background: #fff;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <h2 style="margin: 0; font-size: 1.25rem;">👤 ${s.name}</h2>
@@ -823,7 +827,10 @@ const app = (() => {
                                 <div style="font-weight: bold; color: ${s.allPassed ? 'var(--cj-green)' : 'var(--cj-red)'}; font-size: 1.2rem;">GWA: ${gwa}</div>
                                 <div style="font-size: 0.85rem; color: var(--text-muted);">${available.length} subject(s) available</div>
                             </div>
-                            <button class="btn btn-sm" style="background:#f9f9f9;border:1px solid #ddd;color:#333;" onclick="window.print()">🖨️ Print</button>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-sm" style="background:#f9f9f9;border:1px solid #ddd;color:#333;" onclick="window.print()">🖨️ Print</button>
+                                <button class="btn btn-sm" style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;" onclick="document.querySelectorAll('details').forEach(d => d.open = true); app.downloadAsPDF('${cardId}', '${s.name}')">📄 Save to PDF</button>
+                            </div>
                         </div>
                     </div>
 
@@ -842,9 +849,13 @@ const app = (() => {
                                 const yearLabel = yr === 1 ? '1st Year' : yr === 2 ? '2nd Year' : yr === 3 ? '3rd Year' : '4th Year';
                                 const semLabel = sem === 1 ? 'First Semester' : sem === 2 ? 'Second Semester' : 'Summer';
                                 const totalUnits = group.reduce((sum, sub) => sum + sub.units, 0);
+
+                                // Group student grades by subject code for history
+                                const studentGrades = s.grades || [];
+
                                 semSections += `
                                         <div class="semester-section" style="margin-top: 1.5rem;">
-                                            <div class="semester-title"> ${semLabel} &nbsp;&bull;&nbsp; Year ${year} <small style="font-weight:400;color:var(--text-muted);margin-left:auto;">${totalUnits} units available</small></div>
+                                            <div class="semester-title"> ${yearLabel} &nbsp;&bull;&nbsp; ${semLabel} <small style="font-weight:400;color:var(--text-muted);margin-left:auto;">${totalUnits} units available</small></div>
                                             <div class="table-container">
                                                 <table class="prospectus-table">
                                                     <thead>
@@ -858,7 +869,9 @@ const app = (() => {
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        ${group.map(sub => `
+                                                        ${group.map(sub => {
+                                    const code = sub.code.toUpperCase();
+                                    return `
                                                             <tr>
                                                                 <td class="code-cell">${sub.code}</td>
                                                                 <td>${sub.name}</td>
@@ -867,14 +880,18 @@ const app = (() => {
                                                                 <td style="text-align:center;"><strong>${sub.units}</strong></td>
                                                                 <td>
                                                                     ${sub.code.toUpperCase() === 'PC710' ? '<span style="font-size:0.8rem;color:var(--cj-green);font-weight:500;">Taken all subjects for the last 6 semesters (Including Summer).</span>' :
-                                        sub.code.toUpperCase() === 'PRAC802' ? '<span style="font-size:0.8rem;color:var(--cj-green);font-weight:500;">Taken all subjects for the last 7 semesters and Research.(including Summer)</span>' :
-                                            ((sub.prerequisites || []).length > 0
-                                                ? sub.prerequisites.map(p => `<span class="prereq-tag met">${p}</span>`).join(' ')
-                                                : '<span class="prereq-tag met" style="font-size:0.7rem;">None</span>')
-                                    }
+                                            sub.code.toUpperCase() === 'PRAC802' ? '<span style="font-size:0.8rem;color:var(--cj-green);font-weight:500;">Taken all subjects for the last 7 semesters and Research.(including Summer)</span>' :
+                                                ((sub.prerequisites || []).length > 0
+                                                    ? sub.prerequisites.map(p => {
+                                                        const isPassed = studentGrades.some(g => g.subjectCode.toUpperCase() === p.toUpperCase() && g.passed);
+                                                        return `<span class="prereq-tag ${isPassed ? 'met' : 'unmet'}">${p}</span>`;
+                                                    }).join(' ')
+                                                    : '<span class="prereq-tag met" style="font-size:0.7rem;">None</span>')
+                                        }
                                                                 </td>
                                                             </tr>
-                                                        `).join('')}
+                                                        `;
+                                }).join('')}
                                                     </tbody>
                                                 </table>
                                             </div>
@@ -945,12 +962,13 @@ const app = (() => {
                         const semProspectus = prospectusCache.filter(s => s.year == year && s.sem === sem);
                         if (semProspectus.length === 0) return;
 
+                        const yearLabel = year === 1 ? '1st Year' : year === 2 ? '2nd Year' : year === 3 ? '3rd Year' : '4th Year';
                         const semLabel = sem === 1 ? 'First Semester' : sem === 2 ? 'Second Semester' : 'Summer';
                         const totalUnits = semProspectus.reduce((sum, s) => sum + s.units, 0);
 
                         tablesHtml += `
                             <div class="semester-section" style="margin-top: 1.5rem;">
-                                <div class="semester-title">${semLabel} &nbsp;&bull;&nbsp; Year ${year} <small style="font-weight:400;color:var(--text-muted);margin-left:auto;">${totalUnits} units</small></div>
+                                <div class="semester-title">${yearLabel} &nbsp;&bull;&nbsp; ${semLabel} <small style="font-weight:400;color:var(--text-muted);margin-left:auto;">${totalUnits} units</small></div>
                                 <div class="table-container">
                                     <table class="prospectus-table">
                                         <thead>
@@ -967,10 +985,27 @@ const app = (() => {
                                         </thead>
                                         <tbody>
                                             ${semProspectus.map(sub => {
-                            const studentGrade = grades.find(g => g.subjectCode.toUpperCase() === sub.code.toUpperCase());
+                            const code = sub.code.toUpperCase();
+                            const attempts = grades.filter(g => g.subjectCode.toUpperCase() === code);
+                            
+                            // Sort attempts: Passed one first, then latest record
+                            const hasPassed = attempts.find(a => a.passed);
+                            const sorted = attempts.sort((a, b) => new Date(b.dateRecorded) - new Date(a.dateRecorded));
+                            const studentGrade = hasPassed || sorted[0];
+                            const history = attempts.filter(a => a._id !== (studentGrade ? studentGrade._id : ''));
+
                             if (studentGrade) {
                                 const disp = getGradeDisplay(studentGrade.gwa, studentGrade.passed, studentGrade.status);
                                 const statusCls = ['NT', 'INC', 'DROPPED'].includes(studentGrade.status) ? 'grade-special' : (studentGrade.passed ? 'pass' : 'fail');
+                                
+                                const historyHtml = history.length > 0 ? `
+                                    <div style="font-size:0.65rem; color:var(--text-muted); margin-top:4px; padding-top:2px; border-top:1px dashed #eee;">
+                                        ${history.map(h => `
+                                            <div title="${h.status}">Prev: <strong>${h.gwa.toFixed(2)}</strong> (${h.schoolYear || 'N/A'})</div>
+                                        `).join('')}
+                                    </div>
+                                ` : '';
+
                                 return `
                                                     <tr>
                                                         <td class="code-cell">${sub.code}</td>
@@ -979,7 +1014,10 @@ const app = (() => {
                                                         <td style="text-align:center;">${sub.lec > 0 ? sub.lec : '—'}</td>
                                                         <td style="text-align:center;">${sub.lab > 0 ? sub.lab : '—'}</td>
                                                         <td style="text-align:center;"><strong>${sub.units}</strong></td>
-                                                        <td style="text-align:center;"><span class="grade-cell ${disp.cls}">${disp.label}</span></td>
+                                                        <td style="text-align:center;">
+                                                            <span class="grade-cell ${disp.cls}">${disp.label}</span>
+                                                            ${historyHtml}
+                                                        </td>
                                                         <td style="text-align:center;"><span class="status-cell ${statusCls}">${studentGrade.status}</span></td>
                                                     </tr>
                                                 `;
@@ -1048,8 +1086,9 @@ const app = (() => {
                         `;
                 }
 
+                const cardId = `graderecord-card-${s.studentId.replace(/[^a-z0-9]/gi, '-')}`;
                 html += `
-                    <div class="student-card" style="margin-bottom: 1rem; padding: 1rem; border: 1px solid #eaeaea; border-radius: var(--radius-md); background: #fff;">
+                    <div class="student-card" id="${cardId}" style="margin-bottom: 1rem; padding: 1rem; border: 1px solid #eaeaea; border-radius: var(--radius-md); background: #fff;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <h2 style="margin: 0; font-size: 1.25rem;">👤 ${s.name}</h2>
@@ -1059,7 +1098,10 @@ const app = (() => {
                             </div>
                             <div style="display: flex; align-items: center; gap: 1rem; text-align: right;">
                                 <div style="font-weight: bold; color: ${allPassed ? 'var(--cj-green)' : 'var(--cj-red)'}; font-size: 1.2rem;">GWA: ${gwa}</div>
-                                <button class="btn btn-sm" style="background:#f9f9f9;border:1px solid #ddd;color:#333;" onclick="document.querySelectorAll('details').forEach(d => d.open = true); window.print()">🖨️ Print</button>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button class="btn btn-sm" style="background:#f9f9f9;border:1px solid #ddd;color:#333;" onclick="document.querySelectorAll('details').forEach(d => d.open = true); window.print()">🖨️ Print</button>
+                                    <button class="btn btn-sm" style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;" onclick="document.querySelectorAll('details').forEach(d => d.open = true); app.downloadAsPDF('${cardId}', '${s.name}')">📄 Save to PDF</button>
+                                </div>
                             </div>
                         </div>
 
@@ -1136,6 +1178,38 @@ const app = (() => {
         setTimeout(() => toast.classList.remove('show'), 3500);
     }
 
+    async function downloadAsPDF(elementId, studentName = 'Student_Record') {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+
+        // Auto-expand all details for capturing full content
+        const details = element.querySelectorAll('details');
+        const originalStates = Array.from(details).map(d => d.open);
+        details.forEach(d => d.open = true);
+
+        const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        
+        const opt = {
+            margin:       10,
+            filename:     `${safeName}_report.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, logging: false },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        try {
+            showToast('Generating PDF...', 'info');
+            await html2pdf().set(opt).from(element).save();
+            showToast('PDF downloaded successfully!', 'success');
+        } catch (err) {
+            console.error('PDF error:', err);
+            showToast('Error generating PDF', 'error');
+        } finally {
+            // Restore details to original state
+            details.forEach((d, i) => d.open = originalStates[i]);
+        }
+    }
+
     // ─── Init ──────────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', init);
 
@@ -1148,6 +1222,7 @@ const app = (() => {
         checkEnrollmentEligibility,
         checkGradeRecord,
         openGradeRecord,
-        updateGradeCenterRows
+        updateGradeCenterRows,
+        downloadAsPDF
     };
 })();

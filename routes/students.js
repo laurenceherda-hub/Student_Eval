@@ -198,15 +198,27 @@ router.post('/grades', async (req, res) => {
                 status
             };
 
-            const isDuplicate = student.grades.some(eg => 
+            const existingIndex = student.grades.findIndex(eg => 
                 eg.subjectCode.toUpperCase() === newGrade.subjectCode && 
                 eg.schoolYear === newGrade.schoolYear &&
-                eg.gwa === newGrade.gwa &&
-                eg.status === newGrade.status
+                ['INC', 'NT'].includes(eg.status)
             );
 
-            if (!isDuplicate) {
-                student.grades.push(newGrade);
+            if (existingIndex >= 0) {
+                // If we found an INC/NT record for this SY, overwrite it
+                student.grades[existingIndex] = newGrade;
+            } else {
+                // Standard check: don't push exact duplicate entries
+                const isDuplicate = student.grades.some(eg => 
+                    eg.subjectCode.toUpperCase() === newGrade.subjectCode && 
+                    eg.schoolYear === newGrade.schoolYear &&
+                    eg.gwa === newGrade.gwa &&
+                    eg.status === newGrade.status
+                );
+
+                if (!isDuplicate) {
+                    student.grades.push(newGrade);
+                }
             }
         }
         
