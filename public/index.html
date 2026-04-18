@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTM Student Grade Evaluation System | Cor Jesu College</title>
+    <meta name="description"
+        content="HTM Student Grade Evaluation System for Hospitality and Tourism Management at Cor Jesu College">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-brand">
+                <div class="header-logo">
+                    <img src="cjc_logo.webp" alt="CJC Logo"
+                        style="width: 50px; height: 50px; object-fit: contain; border-radius: 8px;" />
+                </div>
+                <div class="header-text">
+                    <h1>HM Grade Evaluation System</h1>
+                    <p>Hospitality Management &mdash; Cor Jesu College, Inc.</p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav-tabs" id="navTabs">
+            <button class="nav-tab active" data-tab="prospectus" id="tab-prospectus">Prospectus</button>
+            <button class="nav-tab" data-tab="gradecenter" id="tab-gradecenter">Grade Center</button>
+            <button class="nav-tab" data-tab="search" id="tab-search">Student Lookup</button>
+            <button class="nav-tab" data-tab="graderecord" id="tab-graderecord">Grade Record</button>
+            <button class="nav-tab" data-tab="enrollment" id="tab-enrollment">Enrollment Check</button>
+        </div>
+
+        <!-- Prospectus Tab -->
+        <div id="prospectus" class="content active">
+            <div class="prospectus-banner">
+                <div class="prospectus-banner-content">
+                    <h3>BS Hospitality Management Prospectus</h3>
+                    <p>BACHELOR OF SCIENCE IN HOSPITALITY MANAGEMENT &mdash; 4 - Year Program</p>
+                </div>
+            </div>
+
+            <div class="year-tabs">
+                <button class="year-tab active" data-year="year1">1st Year</button>
+                <button class="year-tab" data-year="year2">2nd Year</button>
+                <button class="year-tab" data-year="year3">3rd Year</button>
+                <button class="year-tab" data-year="year4">4th Year</button>
+            </div>
+
+            <div id="prospectus-year1" class="year-content active">
+                <div class="loading-spin">
+                    <div class="spinner"></div>
+                    <p>Loading subjects...</p>
+                </div>
+            </div>
+            <div id="prospectus-year2" class="year-content"></div>
+            <div id="prospectus-year3" class="year-content"></div>
+            <div id="prospectus-year4" class="year-content"></div>
+        </div>
+
+        <!-- Grade Center Tab -->
+        <div id="gradecenter" class="content">
+            <div class="section-header-bar">
+                <h2 class="section-title">Grade Center</h2>
+                <p class="section-subtitle">Manually enter and save student grades to the database</p>
+            </div>
+            <div id="gradeCenterAlert"></div>
+            <div id="gradeCenterContent"></div>
+        </div>
+
+
+        <!-- Search Tab -->
+        <div id="search" class="content">
+            <div class="section-header-bar">
+                <h2 class="section-title">Student Lookup</h2>
+                <p class="section-subtitle">Search for a student by ID or name</p>
+            </div>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Enter Student ID (e.g. 2024-0001-1) or Name..."
+                    autocomplete="off">
+                <button class="btn btn-primary" onclick="app.searchStudent()">🔍 Search</button>
+            </div>
+            <div id="searchResults"></div>
+        </div>
+
+        <!-- Grade Record Tab -->
+        <div id="graderecord" class="content">
+            <div class="section-header-bar">
+                <h2 class="section-title">Grade Record</h2>
+                <p class="section-subtitle">View detailed grade records of a specific student</p>
+            </div>
+            <div class="search-box">
+                <input type="text" id="gradeRecordSearchInput"
+                    placeholder="Enter Student ID (e.g. 2024-0001-1) or Name..." autocomplete="off">
+                <button class="btn btn-primary" onclick="app.checkGradeRecord()">🔍 View Record</button>
+            </div>
+            <div id="gradeRecordResults"></div>
+        </div>
+
+        <!-- Enrollment Check Tab -->
+        <div id="enrollment" class="content">
+            <div class="section-header-bar">
+                <h2 class="section-title">Enrollment Eligibility</h2>
+                <p class="section-subtitle">Check which subjects a student can enroll in next semester</p>
+            </div>
+            <div class="search-box">
+                <input type="text" id="enrollSearchInput" placeholder="Enter Student ID (e.g. 2024-0001-1) or Name..."
+                    autocomplete="off">
+                <button class="btn btn-primary" onclick="app.checkEnrollmentEligibility()">🔍 Check Eligibility</button>
+            </div>
+            <div id="enrollmentResults"></div>
+        </div>
+    </div>
+
+    <!-- Student Detail Modal -->
+    <div id="studentModal" class="modal">
+        <div class="modal-overlay" onclick="app.closeModal()"></div>
+        <div class="modal-content wide">
+            <button class="close-modal" onclick="app.closeModal()" aria-label="Close">&times;</button>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

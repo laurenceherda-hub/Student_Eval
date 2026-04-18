@@ -1,0 +1,20 @@
+{
+  "name": "htm-student-eval",
+  "version": "1.0.0",
+  "description": "HTM Student Grade Evaluation System - Node.js + Express + MongoDB",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "seed": "node seed.js"
+  },
+  "keywords": ["HTM", "grades", "evaluation", "cors-jesu"],
+  "author": "Cor Jesu College HTM Department",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "mongoose": "^8.1.3"
+  }
+}
