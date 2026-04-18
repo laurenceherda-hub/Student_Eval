@@ -190,7 +190,11 @@ const app = (() => {
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top:var(--space-sm);">
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top:var(--space-sm);">
+                    <div class="form-group">
+                        <label class="form-label">School Year</label>
+                        <input class="form-control" id="gc-schoolYear" placeholder="e.g. 2023-2024" />
+                    </div>
                     <div class="form-group">
                         <label class="form-label">Year Level</label>
                         <select class="form-control" id="gc-yearLevel" onchange="app.updateGradeCenterRows()">
@@ -269,10 +273,6 @@ const app = (() => {
             <div class="form-group">
                 <label class="form-label">${idx === 0 ? 'Subject Name (optional)' : ''}</label>
                 <input class="form-control subject-name-input" placeholder="Auto-detected from prospectus" readonly style="background:#f9f9f9;cursor:not-allowed;" />
-            </div>
-            <div class="form-group">
-                <label class="form-label">${idx === 0 ? 'School Year' : ''}</label>
-                <input class="form-control subject-sy-input" placeholder="e.g. 2023-2024" />
             </div>
             <div class="form-group">
                 <label class="form-label">${idx === 0 ? 'Grade&nbsp;<small style="font-weight:400;color:var(--text-muted);">(1.0–3.0 | 5=Failed | 7=Dropped | 8=INC | 9=NT)</small>' : ''}</label>
@@ -374,6 +374,7 @@ const app = (() => {
         const classifier = document.getElementById('gc-classifier').value;
         let semester = document.getElementById('gc-semester').value;
         if (semester !== 'summer') semester = parseInt(semester);
+        const schoolYear = document.getElementById('gc-schoolYear').value.trim();
 
         const idPattern = /^\d{4}-\d{4}-\d$/;
         if (!studentId || !name) {
@@ -390,7 +391,6 @@ const app = (() => {
 
         rows.forEach(row => {
             const code = row.querySelector('.subject-code-input')?.value.trim().toUpperCase();
-            const schoolYear = row.querySelector('.subject-sy-input')?.value.trim();
             const gwa = parseFloat(row.querySelector('.subject-grade-input')?.value);
             if (!code || isNaN(gwa)) return;
             grades.push({ subjectCode: code, schoolYear, gwa });
@@ -477,6 +477,7 @@ const app = (() => {
     function clearGradeForm(keepAlert = false) {
         document.getElementById('gc-studentId').value = '';
         document.getElementById('gc-name').value = '';
+        if (document.getElementById('gc-schoolYear')) document.getElementById('gc-schoolYear').value = '';
         document.getElementById('subjectRows').innerHTML = '';
         document.getElementById('gradeCenterPreview').innerHTML = '';
         if (keepAlert !== true) {
@@ -627,13 +628,32 @@ const app = (() => {
             students.forEach(s => {
                 const grades = s.grades || [];
                 const gwa = (s.finalGWA || 0).toFixed(2);
-                const allPassed = s.allPassed;
 
-                const passedSubjects = grades.filter(g => g.passed);
-                const failedSubjects = grades.filter(g => !g.passed);
+                // Group grades by subject code to handle history
+                const grouped = {};
+                grades.forEach(g => {
+                    const code = g.subjectCode.toUpperCase();
+                    if (!grouped[code]) grouped[code] = [];
+                    grouped[code].push(g);
+                });
 
-                const passedCodes = passedSubjects.map(g => g.subjectCode.toUpperCase());
-                const takenCodes = grades.map(g => g.subjectCode.toUpperCase());
+                const subjectStates = Object.values(grouped).map(attempts => {
+                    // Sort attempts: Passed one first if it exists, otherwise latest recorded
+                    const hasPassed = attempts.find(a => a.passed);
+                    const sorted = attempts.sort((a, b) => new Date(b.dateRecorded) - new Date(a.dateRecorded));
+                    const latest = hasPassed || sorted[0];
+                    const history = attempts.filter(a => a._id !== latest._id);
+                    return { latest, history };
+                });
+
+                const passed = subjectStates.filter(ss => ss.latest.status === 'PASSED');
+                const failed = subjectStates.filter(ss => ss.latest.status === 'FAILED');
+                const dropped = subjectStates.filter(ss => ss.latest.status === 'DROPPED');
+                const inc = subjectStates.filter(ss => ss.latest.status === 'INC');
+                const nt = subjectStates.filter(ss => ss.latest.status === 'NT');
+
+                const passedCodes = passed.map(ss => ss.latest.subjectCode.toUpperCase());
+                const takenCodes = subjectStates.map(ss => ss.latest.subjectCode.toUpperCase());
 
                 const eligible = prospectusCache.filter(sub => {
                     const code = sub.code.toUpperCase();
@@ -644,6 +664,33 @@ const app = (() => {
                     const code = sub.code.toUpperCase();
                     return !takenCodes.includes(code) && !(sub.prerequisites || []).every(p => passedCodes.includes(p.toUpperCase()));
                 });
+
+                const renderGradeCard = (ss, type) => {
+                    const sub = ss.latest;
+                    const historyHtml = ss.history.length > 0 ? `
+                        <div class="grade-history" style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px dashed #ddd; font-size:0.8rem;">
+                            ${ss.history.map(h => `
+                                <div style="color:var(--text-muted);">
+                                    <span style="font-weight:600;">Previous Failed Grade:</span> 
+                                    <span class="grade-badge grade-fail" style="transform:scale(0.8);">${h.gwa.toFixed(2)}</span> 
+                                    (${h.schoolYear || 'N/A'})
+                                </div>
+                            `).join('')}
+                            <div style="font-weight:600; color:var(--cj-blue); margin-top:2px;">Current Grade: ${sub.gwa.toFixed(2)}</div>
+                        </div>` : '';
+
+                    return `
+                        <div class="enrollment-card ${type}">
+                            <div class="subject-code">${sub.subjectCode}</div>
+                            <div class="subject-name">${sub.subjectName}</div>
+                            <div class="subject-meta">
+                                <span class="meta-item units">Lec: ${sub.lec} | Lab: ${sub.lab} | Total: ${sub.units}</span>
+                                <span class="meta-item" style="background:var(--bg-light);border:1px solid var(--border-light);">S.Y.: ${sub.schoolYear || '—'}</span>
+                                <span class="grade-badge ${getGradeClass(sub.gwa)}">${sub.gwa.toFixed(2)}</span>
+                            </div>
+                            ${historyHtml}
+                        </div>`;
+                };
 
                 html += `
                     <div class="student-card">
@@ -659,38 +706,30 @@ const app = (() => {
                             <summary style="cursor: pointer; font-weight: 600; color: var(--text-color);">View Subjects Overview</summary>
                             <div style="margin-top: 1rem;">
 
-                                <h3 class="section-header available" style="font-size: 0.95rem;">Passed (${passedSubjects.length})</h3>
+                                <h3 class="section-header available" style="font-size: 0.95rem;">Passed (${passed.length})</h3>
                                 <div class="enrollment-grid">
-                                    ${passedSubjects.length > 0 ? passedSubjects.map(sub => {
-                    const prospMatch = prospectusCache.find(p => p.code.toUpperCase() === sub.subjectCode.toUpperCase());
-                    return `
-                                        <div class="enrollment-card completed">
-                                            <div class="subject-code">${sub.subjectCode}</div>
-                                            <div class="subject-name">${sub.subjectName}</div>
-                                            <div class="subject-meta">
-                                                <span class="meta-item units">Lec: ${sub.lec} | Lab: ${sub.lab} | Total: ${sub.units}</span>
-                                                <span class="meta-item" style="background:var(--bg-light);border:1px solid var(--border-light);">S.Y.: ${sub.schoolYear || '—'}</span>
-                                                <span class="grade-badge ${getGradeClass(sub.gwa)}">${sub.gwa.toFixed(2)}</span>
-                                            </div>
-                                        </div>`;
-                }).join('') : '<p style="color:var(--text-muted);font-size:0.85rem;padding:0.5rem;">None</p>'}
+                                    ${passed.length > 0 ? passed.map(ss => renderGradeCard(ss, 'completed')).join('') : '<p style="color:var(--text-muted);font-size:0.85rem;padding:0.5rem;">None</p>'}
                                 </div>
 
-                                <h3 class="section-header locked" style="font-size: 0.95rem;">Failed (${failedSubjects.length})</h3>
+                                <h3 class="section-header locked" style="font-size: 0.95rem;">Failed (${failed.length})</h3>
                                 <div class="enrollment-grid">
-                                    ${failedSubjects.length > 0 ? failedSubjects.map(sub => `
-                                        <div class="enrollment-card locked">
-                                            <div class="subject-code">${sub.subjectCode}</div>
-                                            <div class="subject-name">${sub.subjectName}</div>
-                                            <div class="subject-meta">
-                                                <span class="meta-item units">Lec: ${sub.lec} | Lab: ${sub.lab} | Total: ${sub.units}</span>
-                                                <span class="meta-item" style="background:var(--bg-light);border:1px solid var(--border-light);">S.Y.: ${sub.schoolYear || '—'}</span>
-                                                <span class="grade-badge grade-fail">${sub.gwa.toFixed(2)}</span>
-                                            </div>
-                                        </div>
-                                    `).join('') : '<p style="color:var(--text-muted);font-size:0.85rem;padding:0.5rem;">None</p>'}
+                                    ${failed.length > 0 ? failed.map(ss => renderGradeCard(ss, 'locked')).join('') : '<p style="color:var(--text-muted);font-size:0.85rem;padding:0.5rem;">None</p>'}
                                 </div>
 
+                                <h3 class="section-header" style="font-size: 0.95rem; color:#d97706;">Dropped (${dropped.length})</h3>
+                                <div class="enrollment-grid">
+                                    ${dropped.length > 0 ? dropped.map(ss => renderGradeCard(ss, 'locked')).join('') : '<p style="color:var(--text-muted);font-size:0.85rem;padding:0.5rem;">None</p>'}
+                                </div>
+
+                                <h3 class="section-header" style="font-size: 0.95rem; color:#7c3aed;">Incomplete (${inc.length})</h3>
+                                <div class="enrollment-grid">
+                                    ${inc.length > 0 ? inc.map(ss => renderGradeCard(ss, 'locked')).join('') : '<p style="color:var(--text-muted);font-size:0.85rem;padding:0.5rem;">None</p>'}
+                                </div>
+
+                                <h3 class="section-header" style="font-size: 0.95rem; color:#6b7280;">No Test / Exam (${nt.length})</h3>
+                                <div class="enrollment-grid">
+                                    ${nt.length > 0 ? nt.map(ss => renderGradeCard(ss, 'locked')).join('') : '<p style="color:var(--text-muted);font-size:0.85rem;padding:0.5rem;">None</p>'}
+                                </div>
 
                                 <h3 class="section-header" style="font-size: 0.95rem;">Not Eligible (${locked.length})</h3>
                                 <div class="enrollment-grid">
@@ -805,7 +844,7 @@ const app = (() => {
                                 const totalUnits = group.reduce((sum, sub) => sum + sub.units, 0);
                                 semSections += `
                                         <div class="semester-section" style="margin-top: 1.5rem;">
-                                            <div class="semester-title">${yearLabel} &nbsp;&bull;&nbsp; ${semLabel} <small style="font-weight:400;color:var(--text-muted);margin-left:auto;">${totalUnits} units available</small></div>
+                                            <div class="semester-title"> ${semLabel} &nbsp;&bull;&nbsp; Year ${year} <small style="font-weight:400;color:var(--text-muted);margin-left:auto;">${totalUnits} units available</small></div>
                                             <div class="table-container">
                                                 <table class="prospectus-table">
                                                     <thead>
@@ -918,6 +957,7 @@ const app = (() => {
                                             <tr>
                                                 <th>Code</th>
                                                 <th>Subject Name</th>
+                                                <th style="text-align:center;">S.Y.</th>
                                                 <th style="text-align:center;">Lec</th>
                                                 <th style="text-align:center;">Lab</th>
                                                 <th style="text-align:center;">Total</th>
@@ -935,6 +975,7 @@ const app = (() => {
                                                     <tr>
                                                         <td class="code-cell">${sub.code}</td>
                                                         <td>${sub.name}</td>
+                                                        <td style="text-align:center; font-size:0.85rem; color:var(--text-muted);">${studentGrade.schoolYear || '—'}</td>
                                                         <td style="text-align:center;">${sub.lec > 0 ? sub.lec : '—'}</td>
                                                         <td style="text-align:center;">${sub.lab > 0 ? sub.lab : '—'}</td>
                                                         <td style="text-align:center;"><strong>${sub.units}</strong></td>
@@ -947,6 +988,7 @@ const app = (() => {
                                                     <tr>
                                                         <td class="code-cell">${sub.code}</td>
                                                         <td>${sub.name}</td>
+                                                        <td style="text-align:center; font-size:0.85rem; color:var(--text-muted);">—</td>
                                                         <td style="text-align:center;">${sub.lec > 0 ? sub.lec : '—'}</td>
                                                         <td style="text-align:center;">${sub.lab > 0 ? sub.lab : '—'}</td>
                                                         <td style="text-align:center;"><strong>${sub.units}</strong></td>
@@ -975,6 +1017,7 @@ const app = (() => {
                                             <tr>
                                                 <th>Code</th>
                                                 <th>Subject Name</th>
+                                                <th style="text-align:center;">S.Y.</th>
                                                 <th style="text-align:center;">Lec</th>
                                                 <th style="text-align:center;">Lab</th>
                                                 <th style="text-align:center;">Total</th>
@@ -990,6 +1033,7 @@ const app = (() => {
                                                  <tr>
                                                      <td class="code-cell">${g.subjectCode}</td>
                                                      <td>${g.subjectName}</td>
+                                                     <td style="text-align:center; font-size:0.85rem; color:var(--text-muted);">${g.schoolYear || '—'}</td>
                                                      <td style="text-align:center;">${g.lec > 0 ? g.lec : '\u2014'}</td>
                                                      <td style="text-align:center;">${g.lab > 0 ? g.lab : '\u2014'}</td>
                                                      <td style="text-align:center;"><strong>${g.units}</strong></td>
@@ -1069,6 +1113,8 @@ const app = (() => {
 
     // ─── Helpers ────────────────────────────────────────────────────────────────
     function getGradeClass(gwa) {
+        if (gwa === 9 || gwa === 8) return 'grade-special';
+        if (gwa === 7) return 'grade-dropped';
         if (gwa <= 1.75) return 'grade-excellent';
         if (gwa <= 2.50) return 'grade-good';
         if (gwa < 3.00) return 'grade-fair';

@@ -198,10 +198,14 @@ router.post('/grades', async (req, res) => {
                 status
             };
 
-            const existingIndex = student.grades.findIndex(eg => eg.subjectCode.toUpperCase() === g.subjectCode.toUpperCase());
-            if (existingIndex >= 0) {
-                student.grades[existingIndex] = newGrade;
-            } else {
+            const isDuplicate = student.grades.some(eg => 
+                eg.subjectCode.toUpperCase() === newGrade.subjectCode && 
+                eg.schoolYear === newGrade.schoolYear &&
+                eg.gwa === newGrade.gwa &&
+                eg.status === newGrade.status
+            );
+
+            if (!isDuplicate) {
                 student.grades.push(newGrade);
             }
         }
