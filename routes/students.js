@@ -186,14 +186,26 @@ router.post('/grades', async (req, res) => {
                 status = 'FAILED';
             }
 
+            // Detect lab rows: code ends with ' LAB' (e.g. "FS101 LAB")
+            const upperCode = g.subjectCode.toUpperCase();
+            const isLabEntry = upperCode.endsWith(' LAB');
+            let subjectForLookup = subject;
+
+            if (isLabEntry) {
+                const parentCode = upperCode.slice(0, -4).trim(); // strip ' LAB'
+                subjectForLookup = await Subject.findOne({ code: new RegExp(`^${parentCode}$`, 'i') });
+            }
+
             const newGrade = {
-                subjectCode: g.subjectCode.toUpperCase(),
-                subjectName: subject ? subject.name : 'Unknown Subject',
+                subjectCode: upperCode,
+                subjectName: isLabEntry
+                    ? (subjectForLookup ? `${subjectForLookup.name} Lab` : `${upperCode} Lab`)
+                    : (subject ? subject.name : 'Unknown Subject'),
                 gwa: finalGwa,
                 schoolYear: g.schoolYear || '',
-                units: subject ? subject.units : 3,
-                lec: subject ? subject.lec : 0,
-                lab: subject ? subject.lab : 0,
+                units: isLabEntry ? (subjectForLookup ? subjectForLookup.lab : 1) : (subject ? subject.units : 3),
+                lec: isLabEntry ? 0 : (subject ? subject.lec : 0),
+                lab: isLabEntry ? (subjectForLookup ? subjectForLookup.lab : 1) : (subject ? subject.lab : 0),
                 passed,
                 status
             };

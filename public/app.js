@@ -44,6 +44,21 @@ const app = (() => {
         });
     }
 
+    // Auto-format search input as student ID (0000-0000-0) when purely numeric
+    function autoFormatSearchId(input) {
+        const val = input.value;
+        // If the user has typed any letter, it's a name search — skip formatting
+        if (/[a-zA-Z]/.test(val)) return;
+        let digits = val.replace(/\D/g, '').substring(0, 9);
+        let formatted = digits;
+        if (digits.length > 4 && digits.length <= 8) {
+            formatted = digits.slice(0, 4) + '-' + digits.slice(4);
+        } else if (digits.length > 8) {
+            formatted = digits.slice(0, 4) + '-' + digits.slice(4, 8) + '-' + digits.slice(8, 9);
+        }
+        input.value = formatted;
+    }
+
     function setupSearchEnterKey() {
         const searchInput = document.getElementById('searchInput');
         const enrollInput = document.getElementById('enrollSearchInput');
@@ -52,6 +67,7 @@ const app = (() => {
         let searchTimeout = null;
         if (searchInput) {
             searchInput.addEventListener('input', () => {
+                autoFormatSearchId(searchInput);
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(() => {
                     if (searchInput.value.trim() !== '') {
@@ -66,6 +82,7 @@ const app = (() => {
 
         if (enrollInput) {
             enrollInput.addEventListener('input', () => {
+                autoFormatSearchId(enrollInput);
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(() => {
                     if (enrollInput.value.trim() !== '') {
@@ -79,6 +96,7 @@ const app = (() => {
         }
         if (gradeRecordInput) {
             gradeRecordInput.addEventListener('input', () => {
+                autoFormatSearchId(gradeRecordInput);
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(() => {
                     if (gradeRecordInput.value.trim() !== '') {
@@ -279,46 +297,92 @@ const app = (() => {
                 <input class="form-control subject-grade-input" type="number" min="1.0" max="9" step="0.25" placeholder="e.g. 1.50" />
             </div>
             <div style="padding-top:${idx === 0 ? '22px' : '0'}">
-                <button class="btn-icon" title="Remove row" onclick="this.closest('.subject-row').remove()">🗑️</button>
+                <button class="btn-icon" title="Remove row" onclick="this.closest('.subject-row').remove()">\u{1F5D1}\uFE0F</button>
             </div>
         `;
 
-        // Auto-detect subject name when code is typed
         const codeInput = row.querySelector('.subject-code-input');
         const nameInput = row.querySelector('.subject-name-input');
         const gradeInput = row.querySelector('.subject-grade-input');
 
         codeInput.addEventListener('input', () => {
             const code = codeInput.value.trim().toUpperCase();
-            if (!code) {
-                nameInput.value = '';
+            if (!code) { nameInput.value = ''; return; }
+
+            // If this row itself is a Lab row (code ends with ' LAB')
+            if (code.endsWith(' LAB')) {
+                const parentCode = code.slice(0, -4).trim();
+                const parent = prospectusCache.find(s => s.code.toUpperCase() === parentCode);
+                nameInput.value = parent ? `${parent.name} Lab` : '';
+                nameInput.style.color = parent ? '#0d5c2e' : '';
                 return;
             }
+
             const found = prospectusCache.find(s => s.code.toUpperCase() === code);
             if (found) {
                 nameInput.value = found.name;
                 nameInput.style.color = '#0d5c2e';
+                // Auto-insert a dedicated lab row right after this one
+                if (found.lab > 0) {
+                    const nextSibling = row.nextElementSibling;
+                    const nextCode = nextSibling?.querySelector('.subject-code-input')?.value.trim().toUpperCase() || '';
+                    if (nextCode !== `${code} LAB`) {
+                        row.insertAdjacentElement('afterend', buildLabRow(`${code} Lab`, `${found.name} Lab`));
+                    }
+                }
             } else {
                 nameInput.value = 'Subject not found in prospectus';
                 nameInput.style.color = '#8B0000';
             }
         });
 
-        // Live grade hint feedback
         gradeInput.addEventListener('input', () => {
             const val = parseFloat(gradeInput.value);
             gradeInput.title = '';
-            if (val === 9) gradeInput.title = 'NT — No Test/Exam';
-            else if (val === 8) gradeInput.title = 'INC — Incomplete';
-            else if (val === 7) gradeInput.title = 'DROPPED — Subject Dropped';
-            else if (val > 3.0 && val <= 5.0) gradeInput.title = 'Will be saved as 5.0 — FAILED';
+            if (val === 9) gradeInput.title = 'NT \u2014 No Test/Exam';
+            else if (val === 8) gradeInput.title = 'INC \u2014 Incomplete';
+            else if (val === 7) gradeInput.title = 'DROPPED \u2014 Subject Dropped';
+            else if (val > 3.0 && val <= 5.0) gradeInput.title = 'Will be saved as 5.0 \u2014 FAILED';
         });
 
         container.appendChild(row);
 
-        if (defaultCode) {
-            codeInput.dispatchEvent(new Event('input'));
-        }
+        if (defaultCode) codeInput.dispatchEvent(new Event('input'));
+    }
+
+    function buildLabRow(labCode, labName) {
+        const row = document.createElement('div');
+        row.className = 'subject-row lab-row';
+        row.innerHTML = `
+            <div class="form-group">
+                <label class="form-label"></label>
+                <input type="text" class="form-control subject-code-input" value="${labCode}" readonly
+                    style="text-transform:uppercase;background:#fff8e1;border-color:rgba(212,160,23,0.5);font-weight:600;cursor:not-allowed;" />
+            </div>
+            <div class="form-group">
+                <label class="form-label"></label>
+                <input class="form-control subject-name-input" value="${labName}" readonly
+                    style="background:#f9f9f9;cursor:not-allowed;color:#0d5c2e;" />
+            </div>
+            <div class="form-group">
+                <label class="form-label"></label>
+                <input class="form-control subject-grade-input" type="number" min="1.0" max="9" step="0.25"
+                    placeholder="Lab grade" style="background:#fff8e1;border-color:rgba(212,160,23,0.5);" />
+            </div>
+            <div>
+                <button class="btn-icon" title="Remove lab row" onclick="this.closest('.subject-row').remove()">\u{1F5D1}\uFE0F</button>
+            </div>
+        `;
+        const gradeInput = row.querySelector('.subject-grade-input');
+        gradeInput.addEventListener('input', () => {
+            const val = parseFloat(gradeInput.value);
+            gradeInput.title = '';
+            if (val === 9) gradeInput.title = 'NT \u2014 No Test/Exam';
+            else if (val === 8) gradeInput.title = 'INC \u2014 Incomplete';
+            else if (val === 7) gradeInput.title = 'DROPPED \u2014 Subject Dropped';
+            else if (val > 3.0 && val <= 5.0) gradeInput.title = 'Will be saved as 5.0 \u2014 FAILED';
+        });
+        return row;
     }
 
     let studentIdFetchTimeout = null;
@@ -410,7 +474,8 @@ const app = (() => {
             const json = await res.json();
             if (!json.success) throw new Error(json.message);
 
-            showAlert('gradeCenterAlert', `✅ Grades saved for ${name} (${studentId}) — ${grades.length} subject(s) recorded.`, 'success');
+            const subjectCount = rows.length;
+            showAlert('gradeCenterAlert', `✅ Grades saved for ${name} (${studentId}) — ${grades.length} entry(ies) recorded.`, 'success');
             showToast('Grades saved successfully!', 'success');
 
             // Clear the form but keep the success alert visible
@@ -994,6 +1059,28 @@ const app = (() => {
                             const studentGrade = hasPassed || sorted[0];
                             const history = attempts.filter(a => a._id !== (studentGrade ? studentGrade._id : ''));
 
+                            // Check for a lab grade entry for this subject
+                            const labCode = code + ' LAB';
+                            const labGradeEntry = grades.find(g => g.subjectCode.toUpperCase() === labCode);
+
+                            const labRowHtml = labGradeEntry ? (() => {
+                                const labDisp = getGradeDisplay(labGradeEntry.gwa, labGradeEntry.passed, labGradeEntry.status);
+                                const labStatusCls = ['NT', 'INC', 'DROPPED'].includes(labGradeEntry.status) ? 'grade-special' : (labGradeEntry.passed ? 'pass' : 'fail');
+                                // Always derive name from prospectus parent (avoids stale "Unknown Subject")
+                                const labDisplayName = `${sub.name} Lab`;
+                                return `
+                                                    <tr style="background:#fffbea; border-left:3px solid rgba(212,160,23,0.6);">
+                                                        <td class="code-cell" style="color:#92400e;font-size:0.8rem;padding-left:1.5rem;">${labGradeEntry.subjectCode}</td>
+                                                        <td style="font-size:0.85rem;color:#78350f;font-style:italic;">${labDisplayName}</td>
+                                                        <td style="text-align:center; font-size:0.85rem; color:var(--text-muted);">${labGradeEntry.schoolYear || '—'}</td>
+                                                        <td style="text-align:center;">—</td>
+                                                        <td style="text-align:center;">${labGradeEntry.lab > 0 ? labGradeEntry.lab : '—'}</td>
+                                                        <td style="text-align:center;"><strong>${labGradeEntry.units}</strong></td>
+                                                        <td style="text-align:center;"><span class="grade-cell ${labDisp.cls}">${labDisp.label}</span></td>
+                                                        <td style="text-align:center;"><span class="status-cell ${labStatusCls}">${labGradeEntry.status}</span></td>
+                                                    </tr>`;
+                            })() : '';
+
                             if (studentGrade) {
                                 const disp = getGradeDisplay(studentGrade.gwa, studentGrade.passed, studentGrade.status);
                                 const statusCls = ['NT', 'INC', 'DROPPED'].includes(studentGrade.status) ? 'grade-special' : (studentGrade.passed ? 'pass' : 'fail');
@@ -1020,7 +1107,7 @@ const app = (() => {
                                                         </td>
                                                         <td style="text-align:center;"><span class="status-cell ${statusCls}">${studentGrade.status}</span></td>
                                                     </tr>
-                                                `;
+                                                    ${labRowHtml}`;
                             }
                             return `
                                                     <tr>
@@ -1033,7 +1120,7 @@ const app = (() => {
                                                         <td style="text-align:center;"><span style="color:var(--text-muted)">—</span></td>
                                                         <td style="text-align:center;"><span style="color:var(--text-muted)">—</span></td>
                                                     </tr>
-                                                `;
+                                                    ${labRowHtml}`;
                         }).join('')}
                                         </tbody>
                                     </table>
@@ -1043,8 +1130,13 @@ const app = (() => {
                     });
                 });
 
-                // Add any subjects found in grades that are NOT in prospectus
-                const unknownGrades = grades.filter(g => !prospectusCache.some(p => p.code.toUpperCase() === g.subjectCode.toUpperCase()));
+                // Add any subjects found in grades that are NOT in prospectus (exclude lab sub-entries)
+                const unknownGrades = grades.filter(g => {
+                    const code = g.subjectCode.toUpperCase();
+                    // Skip if it's a lab entry (will be shown inline below parent subject)
+                    if (code.endsWith(' LAB')) return false;
+                    return !prospectusCache.some(p => p.code.toUpperCase() === code);
+                });
                 if (unknownGrades.length > 0) {
                     tablesHtml += `
                             <div class="semester-section" style="margin-top: 1.5rem;">
@@ -1159,7 +1251,7 @@ const app = (() => {
         if (gwa === 7) return 'grade-dropped';
         if (gwa <= 1.75) return 'grade-excellent';
         if (gwa <= 2.50) return 'grade-good';
-        if (gwa < 3.00) return 'grade-fair';
+        if (gwa <= 3.00) return 'grade-fair';
         if (gwa <= 4.00) return 'grade-poor';
         return 'grade-fail';
     }
