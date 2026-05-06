@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTM Student Grade Evaluation System | Cor Jesu College</title>
+    <title>HM Student Grade Evaluation System | Cor Jesu College</title>
     <meta name="description"
-        content="HTM Student Grade Evaluation System for Hospitality and Tourism Management at Cor Jesu College">
+        content="HM Student Grade Evaluation System for Hospitality and Tourism Management at Cor Jesu College">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
@@ -40,6 +40,7 @@
             <button class="nav-tab" data-tab="search" id="tab-search">Student Lookup</button>
             <button class="nav-tab" data-tab="graderecord" id="tab-graderecord">Grade Record</button>
             <button class="nav-tab" data-tab="enrollment" id="tab-enrollment">Enrollment Check</button>
+            <button class="nav-tab" data-tab="about" id="tab-about">About</button>
         </div>
 
         <!-- Prospectus Tab -->
@@ -125,6 +126,133 @@
                 <button class="btn btn-primary" onclick="app.checkEnrollmentEligibility()">🔍 Check Eligibility</button>
             </div>
             <div id="enrollmentResults"></div>
+        </div>
+        <!-- About Tab -->
+        <div id="about" class="content">
+            <div class="about-hero">
+                <img src="about_banner.png" alt="Hospitality Management">
+                <div class="about-hero-content">
+                    <h2>Elevating Excellence in Hospitality</h2>
+                    <p>HM Student Grade Evaluation System — A dedicated platform for Cor Jesu College's Hospitality
+                        Management program.</p>
+                </div>
+            </div>
+
+            <div class="about-grid">
+                <div class="about-card">
+                    <h3>Our Mission</h3>
+                    <p>To provide an efficient and transparent academic tracking system that empowers both faculty and
+                        students in the Hospitality Management program, ensuring academic integrity and fostering
+                        excellence.</p>
+                </div>
+                <div class="about-card">
+                    <h3>Our Vision</h3>
+                    <p>To become the benchmark for digital academic evaluation systems in hospitality education,
+                        streamlining administrative processes through innovation and user-centric design.</p>
+                </div>
+            </div>
+
+            <div class="features-header">
+                <h2>System Capabilities</h2>
+                <p>Designed specifically for the unique needs of the HM Department Head</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-item">
+                    <span class="feature-icon">📊</span>
+                    <h4>Grade Analytics</h4>
+                    <p>Real-time GWA calculation and performance visualization.</p>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">📋</span>
+                    <h4>Digital Prospectus</h4>
+                    <p>Interactive curriculum tracking for the 4-year HM program.</p>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">✅</span>
+                    <h4>Eligibility Check</h4>
+                    <p>Automated prerequisite verification for enrollment.</p>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🖨️</span>
+                    <h4>Report Generation</h4>
+                    <p>One-click PDF export for student records and evaluations.</p>
+                </div>
+            </div>
+
+            <div class="developers-section">
+                <div class="developers-header">
+                    <h3>👥 Meet the Developers</h3>
+                </div>
+                <div class="developers-grid">
+
+                    <div class="dev-card">
+                        <div class="dev-avatar-container">
+                            <img src="lj.jpeg" alt="Laurence Jose Herda">
+                        </div>
+                        <div class="dev-name">Laurence Jose Herda</div>
+                        <div class="dev-year">BSCS-3</div>
+                        <div class="dev-badge backend">Backend Developer</div>
+                        <p class="dev-bio">Builds the APIs, manages the MongoDB database, and ensures system security,
+                            performance, and reliability.</p>
+                    </div>
+
+
+                    <div class="dev-card">
+                        <div class="dev-avatar-container">
+                            <img src="yok2.png" alt="Nikko Arellano">
+                        </div>
+                        <div class="dev-name">Nikko Arellano</div>
+                        <div class="dev-year">BSCS-3</div>
+                        <div class="dev-badge frontend">Frontend Developer</div>
+                        <p class="dev-bio">Designs the UI, implements responsive layouts, and crafts the smooth,
+                            intuitive experience you use every day.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tech-section">
+                <div class="tech-header">
+                    <h3>⚙️ Tech Stack</h3>
+                </div>
+                <div class="tech-grid">
+                    <!-- Frontend -->
+                    <div class="tech-category">
+                        <h4>💻 Frontend</h4>
+                        <div class="tech-list">
+                            <div class="tech-item"><span class="tech-icon">🌐</span> HTML5</div>
+                            <div class="tech-item"><span class="tech-icon">🎨</span> CSS3</div>
+                            <div class="tech-item"><span class="tech-icon">📜</span> JavaScript</div>
+                            <div class="tech-item"><span class="tech-icon">📈</span> Chart.js</div>
+                            <div class="tech-item"><span class="tech-icon">📄</span> html2pdf.js</div>
+                        </div>
+                    </div>
+
+                    <!-- Backend -->
+                    <div class="tech-category">
+                        <h4>🚀 Backend</h4>
+                        <div class="tech-list">
+                            <div class="tech-item"><span class="tech-icon">🟢</span> Node.js</div>
+                            <div class="tech-item"><span class="tech-icon">🚄</span> Express.js</div>
+                        </div>
+                    </div>
+
+                    <!-- Database -->
+                    <div class="tech-category">
+                        <h4>🍃 Database</h4>
+                        <div class="tech-list">
+                            <div class="tech-item"><span class="tech-icon">💾</span> MongoDB</div>
+                            <div class="tech-item"><span class="tech-icon">🔗</span> Mongoose</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="about-footer">
+                <p><strong>HM Grade Evaluation System</strong></p>
+                <p>&copy; 2026 Cor Jesu College, Inc. | Hospitality Management Department</p>
+            </div>
         </div>
     </div>
 
