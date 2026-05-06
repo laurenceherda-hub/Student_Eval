@@ -1776,3 +1776,83 @@ tr:last-child td:last-child {
     text-align: center;
     color: var(--text-secondary);
 }
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+@media print {
+    /* Hide everything by default when printing a specific card */
+    body.printing-specific-card > *:not(.container),
+    body.printing-specific-card .container > *:not(.content),
+    body.printing-specific-card .content > *:not(.student-card.print-target),
+    body.printing-specific-card .nav-tabs,
+    body.printing-specific-card .header,
+    body.printing-specific-card .search-box,
+    body.printing-specific-card .section-header-bar,
+    body.printing-specific-card .alert,
+    body.printing-specific-card .btn,
+    body.printing-specific-card .add-subject-btn,
+    body.printing-specific-card .form-actions,
+    body.printing-specific-card .footer {
+        display: none !important;
+    }
+
+    body.printing-specific-card {
+        background: white !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    body.printing-specific-card .container {
+        box-shadow: none !important;
+        border: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    body.printing-specific-card .content {
+        display: block !important;
+        padding: 0 !important;
+        background: white !important;
+    }
+
+    .student-card.print-target {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+    }
+
+    /* Ensure details are visible */
+    details {
+        display: block !important;
+    }
+
+    details > summary {
+        display: none !important;
+    }
+
+    details[open] > div {
+        display: block !important;
+    }
+
+    /* Force background colors in print */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* Page break control */
+    .semester-section {
+        page-break-inside: avoid;
+    }
+
+    .student-header {
+        border-bottom: 2px solid var(--cj-red) !important;
+        padding-bottom: 10px !important;
+        margin-bottom: 20px !important;
+    }
+}

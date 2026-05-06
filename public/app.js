@@ -130,6 +130,20 @@ const app = (() => {
         }
     }
 
+    function filterProspectus() {
+        const query = document.getElementById('prospectusSearchInput').value.toLowerCase().trim();
+        if (!query) {
+            renderProspectus(prospectusCache);
+            return;
+        }
+
+        const filtered = prospectusCache.filter(sub => 
+            sub.code.toLowerCase().includes(query) || 
+            sub.name.toLowerCase().includes(query)
+        );
+        renderProspectus(filtered);
+    }
+
     function renderProspectus(subjects) {
         const years = [1, 2, 3, 4];
         const sems = [1, 2, 'summer'];
@@ -389,6 +403,13 @@ const app = (() => {
 
     // Format Student ID as user types: 0000-0000-0
     function formatStudentId(input) {
+        // If user typed letters, skip digit formatting
+        if (/[a-zA-Z]/.test(input.value)) {
+            // Still allow searching if it looks like an ID
+            fetchStudentTakenSubjects(input.value);
+            return;
+        }
+
         let digits = input.value.replace(/\D/g, '').substring(0, 9);
         let formatted = digits;
         if (digits.length > 4 && digits.length <= 8) {
@@ -398,7 +419,7 @@ const app = (() => {
         }
         input.value = formatted;
 
-        const idPattern = /^\d{4}-\d{4}-\d$/;
+        const idPattern = /^[a-zA-Z0-9-]+$/;
         if (idPattern.test(formatted)) {
             clearTimeout(studentIdFetchTimeout);
             studentIdFetchTimeout = setTimeout(() => {
@@ -440,13 +461,13 @@ const app = (() => {
         if (semester !== 'summer') semester = parseInt(semester);
         const schoolYear = document.getElementById('gc-schoolYear').value.trim();
 
-        const idPattern = /^\d{4}-\d{4}-\d$/;
+        const idPattern = /^[a-zA-Z0-9-]+$/;
         if (!studentId || !name) {
             showAlert('gradeCenterAlert', '❌ Student ID and Name are required.', 'error');
             return;
         }
         if (!idPattern.test(studentId)) {
-            showAlert('gradeCenterAlert', '❌ Student ID must follow the format: 0000-0000-0 (e.g. 2024-0001-1)', 'error');
+            showAlert('gradeCenterAlert', '❌ Student ID must contain only letters, numbers, and hyphens.', 'error');
             return;
         }
 
@@ -765,12 +786,13 @@ const app = (() => {
                                 <p class="student-id">ID: ${s.studentId} &nbsp;|&nbsp; Program: <span style="font-weight:700;color:var(--cj-gold-dark);">${s.classifier !== 'NONE' && s.classifier ? s.classifier : 'N/A'}</span> &nbsp;|&nbsp; Year ${s.yearLevel || '—'}</p>
                             </div>
                             <div style="display: flex; gap: 0.5rem;">
-                                <button class="btn btn-sm" style="background:#f9f9f9;border:1px solid #ddd;color:#333;" onclick="document.querySelectorAll('details').forEach(d => d.open = true); window.print()">🖨️ Print</button>
+                                <button class="btn btn-sm" style="background:#f9f9f9;border:1px solid #ddd;color:#333;" onclick="app.printCard('${cardId}')">🖨️ Print</button>
                                 <button class="btn btn-sm" style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;" onclick="app.downloadAsPDF('${cardId}', '${s.name}')">📄 Save to PDF</button>
                             </div>
                         </div>
                         
-                        <details style="margin: 1rem 0; padding: 0.75rem; background: #fafafa; border-radius: var(--radius-md); border: 1px solid #eaeaea;">
+                        <details style="margin: 1rem 0; padding: 0.75rem; background: #fafafa; border-radius: var(--radius-md); border: 1px solid #eaeaea;"
+                                 ontoggle="this.querySelector('summary').textContent = this.open ? 'Shrink Subjects Overview' : 'View Subjects Overview'">
                             <summary style="cursor: pointer; font-weight: 600; color: var(--text-color);">View Subjects Overview</summary>
                             <div style="margin-top: 1rem;">
 
@@ -893,13 +915,14 @@ const app = (() => {
                                 <div style="font-size: 0.85rem; color: var(--text-muted);">${available.length} subject(s) available</div>
                             </div>
                             <div style="display: flex; gap: 0.5rem;">
-                                <button class="btn btn-sm" style="background:#f9f9f9;border:1px solid #ddd;color:#333;" onclick="window.print()">🖨️ Print</button>
-                                <button class="btn btn-sm" style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;" onclick="document.querySelectorAll('details').forEach(d => d.open = true); app.downloadAsPDF('${cardId}', '${s.name}')">📄 Save to PDF</button>
+                                <button class="btn btn-sm" style="background:#f9f9f9;border:1px solid #ddd;color:#333;" onclick="app.printCard('${cardId}')">🖨️ Print</button>
+                                <button class="btn btn-sm" style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;" onclick="app.downloadAsPDF('${cardId}', '${s.name}')">📄 Save to PDF</button>
                             </div>
                         </div>
                     </div>
 
-                    <details style="margin-top: 1rem; border-top: 1px solid #eaeaea; padding-top: 1rem;">
+                    <details style="margin-top: 1rem; border-top: 1px solid #eaeaea; padding-top: 1rem;"
+                             ontoggle="this.querySelector('summary').textContent = this.open ? 'Shrink Available Subjects' : 'View Available Subjects (${available.length})'">
                         <summary class="btn btn-primary" style="display: inline-block; cursor: pointer; list-style: none;">
                             View Available Subjects (${available.length})
                         </summary>
@@ -1191,13 +1214,14 @@ const app = (() => {
                             <div style="display: flex; align-items: center; gap: 1rem; text-align: right;">
                                 <div style="font-weight: bold; color: ${allPassed ? 'var(--cj-green)' : 'var(--cj-red)'}; font-size: 1.2rem;">GWA: ${gwa}</div>
                                 <div style="display: flex; gap: 0.5rem;">
-                                    <button class="btn btn-sm" style="background:#f9f9f9;border:1px solid #ddd;color:#333;" onclick="document.querySelectorAll('details').forEach(d => d.open = true); window.print()">🖨️ Print</button>
-                                    <button class="btn btn-sm" style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;" onclick="document.querySelectorAll('details').forEach(d => d.open = true); app.downloadAsPDF('${cardId}', '${s.name}')">📄 Save to PDF</button>
+                                    <button class="btn btn-sm" style="background:#f9f9f9;border:1px solid #ddd;color:#333;" onclick="app.printCard('${cardId}')">🖨️ Print</button>
+                                    <button class="btn btn-sm" style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;" onclick="app.downloadAsPDF('${cardId}', '${s.name}')">📄 Save to PDF</button>
                                 </div>
                             </div>
                         </div>
 
-                        <details style="margin-top: 1rem; border-top: 1px solid #eaeaea; padding-top: 1rem;">
+                        <details style="margin-top: 1rem; border-top: 1px solid #eaeaea; padding-top: 1rem;"
+                                 ontoggle="this.querySelector('summary').textContent = this.open ? 'Shrink Grade Record' : 'Expand Grade Record'">
                             <summary class="btn btn-primary" style="display: inline-block; cursor: pointer; list-style: none;">
                                 Expand Grade Record
                             </summary>
@@ -1270,6 +1294,30 @@ const app = (() => {
         setTimeout(() => toast.classList.remove('show'), 3500);
     }
 
+    function printCard(elementId) {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+
+        // Auto-expand all details for capturing full content
+        const details = element.querySelectorAll('details');
+        const originalStates = Array.from(details).map(d => d.open);
+        details.forEach(d => d.open = true);
+
+        // Add printing classes
+        document.body.classList.add('printing-specific-card');
+        element.classList.add('print-target');
+
+        // Trigger print
+        window.print();
+
+        // Cleanup
+        document.body.classList.remove('printing-specific-card');
+        element.classList.remove('print-target');
+        
+        // Restore details to original state
+        details.forEach((d, i) => d.open = originalStates[i]);
+    }
+
     async function downloadAsPDF(elementId, studentName = 'Student_Record') {
         const element = document.getElementById(elementId);
         if (!element) return;
@@ -1279,14 +1327,24 @@ const app = (() => {
         const originalStates = Array.from(details).map(d => d.open);
         details.forEach(d => d.open = true);
 
+        // Give it a moment to reflow for accurate capture
+        await new Promise(resolve => setTimeout(resolve, 500));
+
         const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
         
         const opt = {
             margin:       10,
             filename:     `${safeName}_report.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, logging: false },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            html2canvas:  { 
+                scale: 2, 
+                useCORS: true, 
+                logging: false,
+                scrollY: 0,
+                scrollX: 0
+            },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
         };
 
         try {
@@ -1315,6 +1373,8 @@ const app = (() => {
         checkGradeRecord,
         openGradeRecord,
         updateGradeCenterRows,
-        downloadAsPDF
+        downloadAsPDF,
+        printCard,
+        filterProspectus
     };
 })();

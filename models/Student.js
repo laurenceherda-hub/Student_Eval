@@ -21,7 +21,7 @@ const studentSchema = new mongoose.Schema({
         required: true,
         unique: true,
         trim: true,
-        match: [/^\d{4}-\d{4}-\d$/, 'Student ID must follow the format: 0000-0000-0 (e.g. 2024-0001-1)']
+        match: [/^[a-zA-Z0-9-]+$/, 'Student ID must contain only letters, numbers, and hyphens.']
     },
     name: { type: String, required: true, trim: true },
     yearLevel: { type: Number, default: 1 },

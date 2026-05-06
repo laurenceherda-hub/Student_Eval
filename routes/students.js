@@ -99,7 +99,7 @@ router.get('/search/:query', async (req, res) => {
 // GET student eligibility
 router.get('/:studentId/eligibility', async (req, res) => {
     try {
-        const student = await Student.findOne({ studentId: req.params.studentId });
+        const student = await Student.findOne({ studentId: new RegExp(`^${req.params.studentId}$`, 'i') });
         if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
         
         const formatted = formatStudent(student);
@@ -140,7 +140,7 @@ router.get('/:studentId/eligibility', async (req, res) => {
 // GET general student
 router.get('/:studentId', async (req, res) => {
     try {
-        const student = await Student.findOne({ studentId: req.params.studentId });
+        const student = await Student.findOne({ studentId: new RegExp(`^${req.params.studentId}$`, 'i') });
         if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
         res.json({ success: true, data: formatStudent(student) });
     } catch (err) {
@@ -157,7 +157,7 @@ router.post('/grades', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
         
-        let student = await Student.findOne({ studentId });
+        let student = await Student.findOne({ studentId: new RegExp(`^${studentId}$`, 'i') });
         if (!student) {
             student = new Student({ studentId, name, yearLevel, classifier });
         } else {

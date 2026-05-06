@@ -51,6 +51,11 @@
                 </div>
             </div>
 
+            <div class="search-box" style="margin-bottom: var(--space-lg); max-width: 100%;">
+                <input type="text" id="prospectusSearchInput" placeholder="Search subjects by code or name..."
+                    autocomplete="off" oninput="app.filterProspectus()">
+            </div>
+
             <div class="year-tabs">
                 <button class="year-tab active" data-year="year1">1st Year</button>
                 <button class="year-tab" data-year="year2">2nd Year</button>
