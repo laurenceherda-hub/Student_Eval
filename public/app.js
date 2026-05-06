@@ -137,8 +137,8 @@ const app = (() => {
             return;
         }
 
-        const filtered = prospectusCache.filter(sub => 
-            sub.code.toLowerCase().includes(query) || 
+        const filtered = prospectusCache.filter(sub =>
+            sub.code.toLowerCase().includes(query) ||
             sub.name.toLowerCase().includes(query)
         );
         renderProspectus(filtered);
@@ -631,7 +631,7 @@ const app = (() => {
     function updateGradesTable(students) {
         const tbody = document.getElementById('gradesTableBody');
         if (!students || students.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="empty-row">No student records found.</td></tr>';
+            tbody.innerHTML = '<tr><t   d colspan="8" class="empty-row">No student records found.</td></tr>';
             return;
         }
 
@@ -1075,7 +1075,7 @@ const app = (() => {
                                             ${semProspectus.map(sub => {
                             const code = sub.code.toUpperCase();
                             const attempts = grades.filter(g => g.subjectCode.toUpperCase() === code);
-                            
+
                             // Sort attempts: Passed one first, then latest record
                             const hasPassed = attempts.find(a => a.passed);
                             const sorted = attempts.sort((a, b) => new Date(b.dateRecorded) - new Date(a.dateRecorded));
@@ -1107,7 +1107,7 @@ const app = (() => {
                             if (studentGrade) {
                                 const disp = getGradeDisplay(studentGrade.gwa, studentGrade.passed, studentGrade.status);
                                 const statusCls = ['NT', 'INC', 'DROPPED'].includes(studentGrade.status) ? 'grade-special' : (studentGrade.passed ? 'pass' : 'fail');
-                                
+
                                 const historyHtml = history.length > 0 ? `
                                     <div style="font-size:0.65rem; color:var(--text-muted); margin-top:4px; padding-top:2px; border-top:1px dashed #eee;">
                                         ${history.map(h => `
@@ -1313,7 +1313,7 @@ const app = (() => {
         // Cleanup
         document.body.classList.remove('printing-specific-card');
         element.classList.remove('print-target');
-        
+
         // Restore details to original state
         details.forEach((d, i) => d.open = originalStates[i]);
     }
@@ -1331,20 +1331,20 @@ const app = (() => {
         await new Promise(resolve => setTimeout(resolve, 500));
 
         const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        
+
         const opt = {
-            margin:       10,
-            filename:     `${safeName}_report.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { 
-                scale: 2, 
-                useCORS: true, 
+            margin: 10,
+            filename: `${safeName}_report.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: {
+                scale: 2,
+                useCORS: true,
                 logging: false,
                 scrollY: 0,
                 scrollX: 0
             },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
         };
 
         try {
