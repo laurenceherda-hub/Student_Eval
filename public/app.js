@@ -113,20 +113,45 @@ const app = (() => {
     // ─── Prospectus ─────────────────────────────────────────────────────────────
     async function loadProspectus() {
         try {
+            // First try to load from the server API
             const res = await fetch(`${API_BASE}/prospectus`);
             const json = await res.json();
-            if (!json.success) throw new Error(json.message);
-
-            prospectusCache = json.data;
-            renderProspectus(json.data);
+            
+            // If the server returns success and has subjects, use them
+            if (json.success && json.data && json.data.length > 0) {
+                console.log('✅ Loaded prospectus from server database');
+                prospectusCache = json.data;
+                renderProspectus(json.data);
+                return;
+            }
+            
+            // Fallback: If server is empty or failed, load from local bundled JSON
+            console.warn('⚠️ Server prospectus empty or failed. Loading from local bundled JSON...');
+            const localRes = await fetch('prospectus.json');
+            const localData = await localRes.json();
+            prospectusCache = localData;
+            renderProspectus(localData);
+            
+            if (json.success && json.data && json.data.length === 0) {
+                showAlert('gradeCenterAlert', 'ℹ️ Using built-in prospectus (Database is currently empty on this device).', 'info');
+            }
         } catch (err) {
             console.error('Prospectus load error:', err);
-            showAlert('gradeCenterAlert', '⚠️ Could not load prospectus from server. Is MongoDB running?', 'warning');
-            // Fallback: render empty state
-            [1, 2, 3, 4].forEach(yr => {
-                const el = document.getElementById(`prospectus-year${yr}`);
-                if (el) el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔌</div><h3>Server not connected</h3><p>Start the server and MongoDB to load prospectus data.</p></div>`;
-            });
+            
+            // Second level fallback: try local JSON even if fetch failed entirely
+            try {
+                const localRes = await fetch('prospectus.json');
+                const localData = await localRes.json();
+                prospectusCache = localData;
+                renderProspectus(localData);
+                showAlert('gradeCenterAlert', '🔌 Server not connected. Using built-in prospectus.', 'warning');
+            } catch (localErr) {
+                // If both fail, show empty state
+                [1, 2, 3, 4].forEach(yr => {
+                    const el = document.getElementById(`prospectus-year${yr}`);
+                    if (el) el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔌</div><h3>Connection Error</h3><p>Could not load subjects from server or local file.</p></div>`;
+                });
+            }
         }
     }
 
