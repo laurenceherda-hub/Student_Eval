@@ -27,6 +27,7 @@ const studentSchema = new mongoose.Schema({
     yearLevel: { type: Number, default: 1 },
     section: { type: String, default: '' },
     classifier: { type: String, default: 'NONE', enum: ['CABE', 'CSP', 'NONE'] },
+    isABM: { type: Boolean, default: false },
     grades: [gradeSchema]
 }, { timestamps: true });
 

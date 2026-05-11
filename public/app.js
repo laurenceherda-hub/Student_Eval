@@ -113,45 +113,20 @@ const app = (() => {
     // ─── Prospectus ─────────────────────────────────────────────────────────────
     async function loadProspectus() {
         try {
-            // First try to load from the server API
             const res = await fetch(`${API_BASE}/prospectus`);
             const json = await res.json();
-            
-            // If the server returns success and has subjects, use them
-            if (json.success && json.data && json.data.length > 0) {
-                console.log('✅ Loaded prospectus from server database');
-                prospectusCache = json.data;
-                renderProspectus(json.data);
-                return;
-            }
-            
-            // Fallback: If server is empty or failed, load from local bundled JSON
-            console.warn('⚠️ Server prospectus empty or failed. Loading from local bundled JSON...');
-            const localRes = await fetch('prospectus.json');
-            const localData = await localRes.json();
-            prospectusCache = localData;
-            renderProspectus(localData);
-            
-            if (json.success && json.data && json.data.length === 0) {
-                showAlert('gradeCenterAlert', 'ℹ️ Using built-in prospectus (Database is currently empty on this device).', 'info');
-            }
+            if (!json.success) throw new Error(json.message);
+
+            prospectusCache = json.data;
+            renderProspectus(json.data);
         } catch (err) {
             console.error('Prospectus load error:', err);
-            
-            // Second level fallback: try local JSON even if fetch failed entirely
-            try {
-                const localRes = await fetch('prospectus.json');
-                const localData = await localRes.json();
-                prospectusCache = localData;
-                renderProspectus(localData);
-                showAlert('gradeCenterAlert', '🔌 Server not connected. Using built-in prospectus.', 'warning');
-            } catch (localErr) {
-                // If both fail, show empty state
-                [1, 2, 3, 4].forEach(yr => {
-                    const el = document.getElementById(`prospectus-year${yr}`);
-                    if (el) el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔌</div><h3>Connection Error</h3><p>Could not load subjects from server or local file.</p></div>`;
-                });
-            }
+            showAlert('gradeCenterAlert', '⚠️ Could not load prospectus from server. Is MongoDB running?', 'warning');
+            // Fallback: render empty state
+            [1, 2, 3, 4].forEach(yr => {
+                const el = document.getElementById(`prospectus-year${yr}`);
+                if (el) el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔌</div><h3>Server not connected</h3><p>Start the server and MongoDB to load prospectus data.</p></div>`;
+            });
         }
     }
 
@@ -247,6 +222,13 @@ const app = (() => {
                     </div>
                 </div>
 
+                <div style="margin: 0.75rem 0 1.25rem; padding: 0.75rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md); display: flex; align-items: center; gap: 0.75rem;">
+                    <input type="checkbox" id="gc-isABM" style="width:1.2rem; height:1.2rem; cursor:pointer;" onchange="app.updateGradeCenterRows()" />
+                    <label for="gc-isABM" style="font-weight:600; color:#166534; cursor:pointer; font-size:0.95rem; display:flex; align-items:center;">
+                        ABM Student <small style="font-weight:400; color:#15803d; margin-left:0.5rem;">(Automatically credits SC1, SC2, SC3, SC4, and SC5 as PASSED)</small>
+                    </label>
+                </div>
+
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top:var(--space-sm);">
                     <div class="form-group">
                         <label class="form-label">School Year</label>
@@ -303,11 +285,18 @@ const app = (() => {
         const year = parseInt(document.getElementById('gc-yearLevel').value) || 1;
         let sem = document.getElementById('gc-semester').value || 1;
         if (sem !== 'summer') sem = parseInt(sem);
+        const isABM = document.getElementById('gc-isABM')?.checked || false;
 
         const container = document.getElementById('subjectRows');
         container.innerHTML = '';
 
-        const subjects = prospectusCache.filter(s => s.year === year && s.sem === sem);
+        let subjects = prospectusCache.filter(s => s.year === year && s.sem === sem);
+
+        if (isABM) {
+            const abmCodes = ['SC1', 'SC2', 'SC3', 'SC4', 'SC5'];
+            subjects = subjects.filter(s => !abmCodes.includes(s.code.toUpperCase()));
+        }
+
         if (subjects.length > 0) {
             subjects.forEach(s => addSubjectRow(s.code));
         } else {
@@ -455,12 +444,48 @@ const app = (() => {
         }
     }
 
+    function updateGradeCenterDatalist(takenCodes) {
+        const datalist = document.getElementById('grade-center-datalist');
+        if (!datalist) return;
+
+        const isABM = document.getElementById('gc-isABM')?.checked || false;
+        const abmCodes = ['SC1', 'SC2', 'SC3', 'SC4', 'SC5'];
+
+        const available = prospectusCache.filter(s => {
+            const code = s.code.toUpperCase();
+            if (takenCodes.includes(code)) return false;
+            // Also filter out ABM subjects if student is ABM
+            if (isABM && abmCodes.includes(code)) return false;
+            return true;
+        });
+        datalist.innerHTML = available.map(s => `<option value="${s.code}">${s.name}</option>`).join('');
+    }
+
     async function fetchStudentTakenSubjects(studentId) {
         try {
             const res = await fetch(`${API_BASE}/students/${encodeURIComponent(studentId)}`);
             const json = await res.json();
-            if (json.success && json.data && json.data.grades) {
-                const takenCodes = json.data.grades.map(g => g.subjectCode.toUpperCase());
+            if (json.success && json.data) {
+                const s = json.data;
+
+                // Populate student info if found
+                const abmCheckbox = document.getElementById('gc-isABM');
+                const nameInput = document.getElementById('gc-name');
+                const classifierSelect = document.getElementById('gc-classifier');
+
+                if (abmCheckbox && s.isABM !== undefined) {
+                    abmCheckbox.checked = s.isABM;
+                }
+                if (nameInput && s.name) {
+                    nameInput.value = s.name;
+                }
+                if (classifierSelect && s.classifier) {
+                    classifierSelect.value = s.classifier;
+                }
+
+                updateGradeCenterRows();
+
+                const takenCodes = (s.grades || []).map(g => g.subjectCode.toUpperCase());
                 updateGradeCenterDatalist(takenCodes);
             } else {
                 updateGradeCenterDatalist([]);
@@ -470,16 +495,10 @@ const app = (() => {
         }
     }
 
-    function updateGradeCenterDatalist(takenCodes) {
-        const datalist = document.getElementById('grade-center-datalist');
-        if (!datalist) return;
-        const available = prospectusCache.filter(s => !takenCodes.includes(s.code.toUpperCase()));
-        datalist.innerHTML = available.map(s => `<option value="${s.code}">${s.name}</option>`).join('');
-    }
-
     async function submitGrades() {
         const studentId = document.getElementById('gc-studentId').value.trim();
         const name = document.getElementById('gc-name').value.trim();
+        const isABM = document.getElementById('gc-isABM').checked;
         const yearLevel = parseInt(document.getElementById('gc-yearLevel').value);
         const classifier = document.getElementById('gc-classifier').value;
         let semester = document.getElementById('gc-semester').value;
@@ -515,7 +534,7 @@ const app = (() => {
             const res = await fetch(`${API_BASE}/students/grades`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ studentId, name, yearLevel, classifier, semester, grades })
+                body: JSON.stringify({ studentId, name, yearLevel, classifier, semester, grades, isABM })
             });
             const json = await res.json();
             if (!json.success) throw new Error(json.message);
@@ -588,6 +607,7 @@ const app = (() => {
     function clearGradeForm(keepAlert = false) {
         document.getElementById('gc-studentId').value = '';
         document.getElementById('gc-name').value = '';
+        document.getElementById('gc-isABM').checked = false;
         if (document.getElementById('gc-schoolYear')) document.getElementById('gc-schoolYear').value = '';
         document.getElementById('subjectRows').innerHTML = '';
         document.getElementById('gradeCenterPreview').innerHTML = '';
@@ -803,14 +823,21 @@ const app = (() => {
                 };
 
                 const cardId = `lookup-card-${s.studentId.replace(/[^a-z0-9]/gi, '-')}`;
+                const safeId = s.studentId.replace(/[^a-z0-9]/gi, '-');
                 html += `
                     <div class="student-card" id="${cardId}">
                         <div class="student-header">
-                            <div>
-                                <h2>${s.name}</h2>
-                                <p class="student-id">ID: ${s.studentId} &nbsp;|&nbsp; Program: <span style="font-weight:700;color:var(--cj-gold-dark);">${s.classifier !== 'NONE' && s.classifier ? s.classifier : 'N/A'}</span> &nbsp;|&nbsp; Year ${s.yearLevel || '—'}</p>
+                            <div id="header-info-${safeId}">
+                                <h2 class="student-name-text">${s.name}</h2>
+                                <p class="student-id">
+                                    ID: <span class="student-id-text">${s.studentId}</span> &nbsp;|&nbsp; 
+                                    Program: <span style="font-weight:700;color:var(--cj-gold-dark);">${s.classifier !== 'NONE' && s.classifier ? s.classifier : 'N/A'}</span> 
+                                    ${s.isABM ? '&nbsp;|&nbsp; <span class="abm-status-val" data-isabm="true" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">ABM STUDENT</span>' : '<span class="abm-status-val" data-isabm="false" style="display:none;"></span>'}
+                                    &nbsp;|&nbsp; Year ${s.yearLevel || '—'}
+                                </p>
                             </div>
-                            <div style="display: flex; gap: 0.5rem;">
+                            <div style="display: flex; gap: 0.5rem;" id="header-actions-${safeId}">
+                                <button class="btn btn-sm btn-edit" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c;" onclick="app.toggleEditStudent('${s.studentId}')">✏️ Edit Info</button>
                                 <button class="btn btn-sm" style="background:#f9f9f9;border:1px solid #ddd;color:#333;" onclick="app.printCard('${cardId}')">🖨️ Print</button>
                                 <button class="btn btn-sm" style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;" onclick="app.downloadAsPDF('${cardId}', '${s.name}')">📄 Save to PDF</button>
                             </div>
@@ -1030,6 +1057,79 @@ const app = (() => {
     }
 
     // ─── Grade Record ──────────────────────────────────────────────────────────
+    function toggleEditStudent(studentId) {
+        const safeId = studentId.replace(/[^a-z0-9]/gi, '-');
+        const infoDiv = document.getElementById(`header-info-${safeId}`);
+        const actionsDiv = document.getElementById(`header-actions-${safeId}`);
+
+        if (!infoDiv || !actionsDiv) return;
+
+        const nameText = infoDiv.querySelector('.student-name-text').textContent;
+        const idText = infoDiv.querySelector('.student-id-text').textContent;
+        const abmVal = infoDiv.querySelector('.abm-status-val')?.dataset.isabm === 'true';
+
+        // Switch to Edit Mode
+        infoDiv.innerHTML = `
+            <div style="margin-bottom:0.5rem;">
+                <label style="display:block;font-size:0.75rem;color:var(--text-muted);font-weight:600;">Student Name</label>
+                <input type="text" class="form-control edit-name-input" value="${nameText}" style="font-size:1.1rem;font-weight:700;padding:4px 8px;width:100%;max-width:400px;margin-top:2px;" />
+            </div>
+            <div style="display:flex; gap:1rem; align-items:flex-end;">
+                <div>
+                    <label style="display:block;font-size:0.75rem;color:var(--text-muted);font-weight:600;">Student ID</label>
+                    <input type="text" class="form-control edit-id-input" value="${idText}" style="font-family:'Courier New',monospace;padding:4px 8px;width:100%;max-width:250px;margin-top:2px;" />
+                </div>
+                <div style="margin-bottom:4px; display:flex; align-items:center; gap:0.5rem; background:#f0fdf4; padding:4px 10px; border-radius:6px; border:1px solid #bbf7d0;">
+                    <input type="checkbox" id="edit-isABM-${safeId}" ${abmVal ? 'checked' : ''} style="cursor:pointer;" />
+                    <label for="edit-isABM-${safeId}" style="cursor:pointer; font-size:0.85rem; font-weight:600; color:#166534;">ABM Student</label>
+                </div>
+            </div>
+        `;
+
+        actionsDiv.innerHTML = `
+            <button class="btn btn-sm btn-success" onclick="app.updateStudentInfo('${studentId}')">💾 Save</button>
+            <button class="btn btn-sm" style="background:#f3f4f6;border:1px solid #d1d5db;color:#374151;" onclick="app.searchStudent()">Cancel</button>
+        `;
+    }
+
+    async function updateStudentInfo(oldStudentId) {
+        const safeId = oldStudentId.replace(/[^a-z0-9]/gi, '-');
+        const card = document.getElementById(`lookup-card-${safeId}`);
+        if (!card) return;
+
+        const newName = card.querySelector('.edit-name-input').value.trim();
+        const newStudentId = card.querySelector('.edit-id-input').value.trim();
+        const isABM = card.querySelector('input[type="checkbox"]').checked;
+
+        if (!newName || !newStudentId) {
+            showToast('Name and ID are required', 'error');
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE}/students/${encodeURIComponent(oldStudentId)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newName, newStudentId, isABM })
+            });
+            const json = await res.json();
+
+            if (!json.success) throw new Error(json.message);
+
+            showToast('Student information updated successfully!', 'success');
+
+            // Refresh search results
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput.value.trim() === oldStudentId) {
+                searchInput.value = newStudentId;
+            }
+            searchStudent();
+        } catch (err) {
+            console.error('Update error:', err);
+            showToast(`Update failed: ${err.message}`, 'error');
+        }
+    }
+
     async function checkGradeRecord() {
         const query = document.getElementById('gradeRecordSearchInput').value.trim();
         const resultsDiv = document.getElementById('gradeRecordResults');
@@ -1400,6 +1500,8 @@ const app = (() => {
         updateGradeCenterRows,
         downloadAsPDF,
         printCard,
-        filterProspectus
+        filterProspectus,
+        toggleEditStudent,
+        updateStudentInfo
     };
 })();
