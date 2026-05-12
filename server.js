@@ -31,8 +31,23 @@ app.get('*', (req, res) => {
 
 // Connect to MongoDB then start server
 mongoose.connect(process.env.MONGODB_URI)
-    .then(() => {
+    .then(async () => {
         console.log('✅ Connected to MongoDB:', process.env.MONGODB_URI);
+        
+        // Auto-seed prospectus if empty
+        const Subject = require('./models/Subject');
+        const prospectusData = require('./models/prospectusData');
+        try {
+            const count = await Subject.countDocuments();
+            if (count === 0) {
+                console.log('🌱 Prospectus is empty. Auto-seeding...');
+                await Subject.insertMany(prospectusData);
+                console.log(`✅ successfully seeded ${prospectusData.length} subjects.`);
+            }
+        } catch (err) {
+            console.error('❌ Auto-seeding failed:', err.message);
+        }
+
         app.listen(PORT, () => {
             console.log(`🚀 Server running at http://localhost:${PORT}`);
         });
