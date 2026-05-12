@@ -18,10 +18,11 @@ const gradeSchema = new mongoose.Schema({
 const studentSchema = new mongoose.Schema({
     studentId: {
         type: String,
-        required: true,
+        required: false,
         unique: true,
+        sparse: true,
         trim: true,
-        match: [/^[a-zA-Z0-9-]+$/, 'Student ID must contain only letters, numbers, and hyphens.']
+        match: [/^[a-zA-Z0-9-]*$/, 'Student ID must contain only letters, numbers, and hyphens.']
     },
     name: { type: String, required: true, trim: true },
     yearLevel: { type: Number, default: 1 },

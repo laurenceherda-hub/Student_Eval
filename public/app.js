@@ -212,7 +212,7 @@ const app = (() => {
                 <datalist id="grade-center-datalist">${datalistOptions}</datalist>
                 <div class="form-grid-2">
                     <div class="form-group">
-                        <label class="form-label">Student ID * <small style="font-weight:400;color:var(--text-muted);">(format: 0000-0000-0)</small></label>
+                        <label class="form-label">Student ID <small style="font-weight:400;color:var(--text-muted);">(optional, format: 0000-0000-0)</small></label>
                         <input class="form-control" id="gc-studentId" placeholder="e.g. 2024-0001-1" maxlength="12"
                                oninput="app.formatStudentId(this)" autocomplete="off" />
                     </div>
@@ -506,11 +506,11 @@ const app = (() => {
         const schoolYear = document.getElementById('gc-schoolYear').value.trim();
 
         const idPattern = /^[a-zA-Z0-9-]+$/;
-        if (!studentId || !name) {
-            showAlert('gradeCenterAlert', '❌ Student ID and Name are required.', 'error');
+        if (!name) {
+            showAlert('gradeCenterAlert', '❌ Student Name is required.', 'error');
             return;
         }
-        if (!idPattern.test(studentId)) {
+        if (studentId && !idPattern.test(studentId)) {
             showAlert('gradeCenterAlert', '❌ Student ID must contain only letters, numbers, and hyphens.', 'error');
             return;
         }
@@ -822,8 +822,9 @@ const app = (() => {
                         </div>`;
                 };
 
-                const cardId = `lookup-card-${s.studentId.replace(/[^a-z0-9]/gi, '-')}`;
-                const safeId = s.studentId.replace(/[^a-z0-9]/gi, '-');
+                const studentIdForId = s.studentId || s._id;
+                const cardId = `lookup-card-${studentIdForId.replace(/[^a-z0-9]/gi, '-')}`;
+                const safeId = studentIdForId.replace(/[^a-z0-9]/gi, '-');
                 html += `
                     <div class="student-card" id="${cardId}">
                         <div class="student-header">
@@ -951,7 +952,8 @@ const app = (() => {
                 const { available, locked, completed } = s.eligibility || { available: [], locked: [], completed: [] };
                 const gwa = (s.finalGWA || 0).toFixed(2);
 
-                const cardId = `enroll-card-${s.studentId.replace(/[^a-z0-9]/gi, '-')}`;
+                const studentIdForId = s.studentId || s._id;
+                const cardId = `enroll-card-${studentIdForId.replace(/[^a-z0-9]/gi, '-')}`;
                 html += `
                 <div class="student-card" id="${cardId}" style="margin-bottom: 1rem; padding: 1rem; border: 1px solid #eaeaea; border-radius: var(--radius-md); background: #fff;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1101,8 +1103,8 @@ const app = (() => {
         const newStudentId = card.querySelector('.edit-id-input').value.trim();
         const isABM = card.querySelector('input[type="checkbox"]').checked;
 
-        if (!newName || !newStudentId) {
-            showToast('Name and ID are required', 'error');
+        if (!newName) {
+            showToast('Student Name is required', 'error');
             return;
         }
 
@@ -1326,7 +1328,8 @@ const app = (() => {
                         `;
                 }
 
-                const cardId = `graderecord-card-${s.studentId.replace(/[^a-z0-9]/gi, '-')}`;
+                const studentIdForId = s.studentId || s._id;
+                const cardId = `graderecord-card-${studentIdForId.replace(/[^a-z0-9]/gi, '-')}`;
                 html += `
                     <div class="student-card" id="${cardId}" style="margin-bottom: 1rem; padding: 1rem; border: 1px solid #eaeaea; border-radius: var(--radius-md); background: #fff;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">

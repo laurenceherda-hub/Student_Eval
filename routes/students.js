@@ -177,13 +177,23 @@ router.post('/grades', async (req, res) => {
     try {
         const { studentId, name, yearLevel, classifier, semester, grades, isABM } = req.body;
 
-        if (!studentId || !name || !grades || grades.length === 0) {
+        if (!name || !grades || grades.length === 0) {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
 
-        let student = await Student.findOne({ studentId: new RegExp(`^${studentId}$`, 'i') });
+        let student;
+        if (studentId) {
+            student = await Student.findOne({ studentId: new RegExp(`^${studentId}$`, 'i') });
+        } else {
+            // If no ID provided, try to find by Name (case-insensitive) among students with no ID
+            student = await Student.findOne({
+                name: new RegExp(`^${name}$`, 'i'),
+                $or: [{ studentId: { $exists: false } }, { studentId: '' }, { studentId: null }]
+            });
+        }
+
         if (!student) {
-            student = new Student({ studentId, name, yearLevel, classifier, isABM });
+            student = new Student({ studentId: studentId || '', name, yearLevel, classifier, isABM });
         } else {
             student.name = name;
             if (isABM !== undefined) student.isABM = isABM;
@@ -276,7 +286,7 @@ router.put('/:studentId', async (req, res) => {
         const oldStudentId = req.params.studentId;
         const { newName, newStudentId, isABM } = req.body;
 
-        if (!newName && !newStudentId && isABM === undefined) {
+        if (!newName && newStudentId === undefined && isABM === undefined) {
             return res.status(400).json({ success: false, message: 'At least one field is required to update.' });
         }
 
@@ -285,11 +295,13 @@ router.put('/:studentId', async (req, res) => {
 
         if (newName) student.name = newName;
         if (isABM !== undefined) student.isABM = isABM;
-        if (newStudentId) {
-            // Check if new studentId already exists
-            const existing = await Student.findOne({ studentId: new RegExp(`^${newStudentId}$`, 'i') });
-            if (existing && existing._id.toString() !== student._id.toString()) {
-                return res.status(400).json({ success: false, message: 'New Student ID already belongs to another student.' });
+        if (newStudentId !== undefined) {
+            if (newStudentId) {
+                // Check if new studentId already exists
+                const existing = await Student.findOne({ studentId: new RegExp(`^${newStudentId}$`, 'i') });
+                if (existing && existing._id.toString() !== student._id.toString()) {
+                    return res.status(400).json({ success: false, message: 'New Student ID already belongs to another student.' });
+                }
             }
             student.studentId = newStudentId;
         }
